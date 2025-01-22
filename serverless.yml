@@ -1,0 +1,69 @@
+service: node-aws-sdk
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  environment:
+    TABLE_NAME: !Ref ClientsTable
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: !GetAtt ClientsTable.Arn
+  logs:
+    restApi: true
+
+functions:
+  clientHandler:
+    handler: src/handlers/clientHandler.handler
+    events:
+      - http:
+          path: clients
+          method: post
+          cors: true
+      - http:
+          path: clients/{id}
+          method: get
+          cors: true
+      - http:
+          path: clients/{id}
+          method: put
+          cors: true
+      - http:
+          path: clients/{id}
+          method: delete
+          cors: true
+
+resources:
+  Resources:
+    ClientsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ClientsTable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+outputs:
+  ApiUrl:
+    Description: API URL
+    Value: !Join
+      - ""
+      - - "https://"
+        - !Ref ApiGatewayRestApi
+        - ".execute-api.${self:provider.region}.amazonaws.com/${self:provider.stage}"
+  DynamoDBTableName:
+    Description: ClientsTable
+    Value: !Ref ClientsTable
